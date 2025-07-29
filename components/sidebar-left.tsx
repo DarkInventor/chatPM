@@ -11,13 +11,10 @@ import {
   MessageCircleQuestion,
   Search,
   Settings2,
-  Sparkle,
-  SparkleIcon,
   Sparkles,
   Trash2,
 } from "lucide-react"
 
-import { NavFavorites } from "@/components/nav-favorites"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavWorkspaces } from "@/components/nav-workspaces"

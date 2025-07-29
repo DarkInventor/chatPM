@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import { useState, useEffect, useRef } from "react";
-import { Lightbulb, Mic, Globe, Paperclip, Send, ArrowRightCircle, ArrowRightFromLine } from "lucide-react";
+import { Lightbulb, Globe, Paperclip} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, ArrowUpRight } from "react-feather";
+import { ArrowRight } from "react-feather";
  
 const PLACEHOLDERS = [
   "Ask or search for anything.",

@@ -1,5 +1,3 @@
-import { MoreHorizontal } from "lucide-react"
-
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -32,12 +30,6 @@ export function NavWorkspaces({
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-          {/* <SidebarMenuItem>
-            <SidebarMenuButton className="text-sidebar-foreground/70">
-              <MoreHorizontal />
-              <span>More</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem> */}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

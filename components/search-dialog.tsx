@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Search, Hash, Clock, Users, Folder, FileText } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
 
 import {
   Dialog,

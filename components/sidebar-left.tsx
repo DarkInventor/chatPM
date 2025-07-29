@@ -64,12 +64,12 @@ const data = {
       icon: Sparkles,
       isActive: true,
     },
-    {
-      title: "Inbox",
-      url: "#",
-      icon: Inbox,
-      badge: "10",
-    },
+    // {
+    //   title: "Inbox",
+    //   url: "#",
+    //   icon: Inbox,
+    //   badge: "10",
+    // },
   ],
   navSecondary: [
     {

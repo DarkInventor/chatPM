@@ -1,6 +1,7 @@
 "use client"
 
 import { type LucideIcon } from "lucide-react"
+import { useNavigation } from "@/contexts/navigation-context"
 
 import {
   SidebarMenu,
@@ -18,18 +19,41 @@ export function NavMain({
     isActive?: boolean
   }[]
 }) {
+  const { activeItem, setActiveItem } = useNavigation()
+
+  const handleItemClick = (title: string) => {
+    const itemMap: { [key: string]: string } = {
+      'Search': 'search',
+      'Ask AI': 'ask-ai',
+      'Home': 'home',
+      'Inbox': 'inbox'
+    }
+    setActiveItem(itemMap[title] as 'search' | 'ask-ai' | 'home' | 'inbox')
+  }
+
   return (
     <SidebarMenu>
-      {items.map((item) => (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild isActive={item.isActive}>
-            <a href={item.url}>
+      {items.map((item) => {
+        const itemMap: { [key: string]: string } = {
+          'Search': 'search',
+          'Ask AI': 'ask-ai',
+          'Home': 'home',
+          'Inbox': 'inbox'
+        }
+        const isActive = activeItem === itemMap[item.title]
+        
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton 
+              isActive={isActive}
+              onClick={() => handleItemClick(item.title)}
+            >
               <item.icon />
               <span>{item.title}</span>
-            </a>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
     </SidebarMenu>
   )
 }

@@ -52,11 +52,7 @@ const data = {
       url: "#",
       icon: Search,
     },
-    {
-      title: "Ask AI",
-      url: "#",
-      icon: Sparkles,
-    },
+    
     {
       title: "Home",
       url: "#",

@@ -1,5 +1,6 @@
 import React from "react"
 import { type LucideIcon } from "lucide-react"
+import { useNavigation } from "@/contexts/navigation-context"
 
 import {
   SidebarGroup,
@@ -22,27 +23,52 @@ export function NavSecondary({
     badge?: React.ReactNode
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  const { activeItem, setActiveItem } = useNavigation()
+
+  const handleItemClick = (title: string) => {
+    const itemMap: { [key: string]: string } = {
+      'Calendar': 'calendar',
+      'Templates': 'templates',
+      'Trash': 'trash',
+      'Help': 'help'
+    }
+    if (itemMap[title]) {
+      setActiveItem(itemMap[title] as 'calendar' | 'templates' | 'trash' | 'help')
+    }
+  }
+
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              {item.title === "Settings" ? (
-                <SettingsDialog />
-              ) : (
-                <>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
+          {items.map((item) => {
+            const itemMap: { [key: string]: string } = {
+              'Calendar': 'calendar',
+              'Templates': 'templates',
+              'Trash': 'trash',
+              'Help': 'help'
+            }
+            const isActive = activeItem === itemMap[item.title]
+            
+            return (
+              <SidebarMenuItem key={item.title}>
+                {item.title === "Settings" ? (
+                  <SettingsDialog />
+                ) : (
+                  <>
+                    <SidebarMenuButton 
+                      isActive={isActive}
+                      onClick={() => handleItemClick(item.title)}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                  {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
-                </>
-              )}
-            </SidebarMenuItem>
-          ))}
+                    </SidebarMenuButton>
+                    {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
+                  </>
+                )}
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

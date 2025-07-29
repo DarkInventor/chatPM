@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { AIChatInput } from "@/components/ui/ai-chat-input"
+import { useSidebar } from "@/components/ui/sidebar"
 
 // Sample data
 const projects = [
@@ -100,6 +101,8 @@ const recentActivity = [
 ]
 
 export function Home() {
+  const { state: sidebarState } = useSidebar()
+
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
@@ -177,6 +180,7 @@ export function Home() {
             ))}
           </div>
         </div>
+
         {/* Recent Activity */}
         <div className="mb-40">
           <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
@@ -210,7 +214,11 @@ export function Home() {
       </div>
 
       {/* AI Chat Input */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 min-w-md px-4 lg:min-w-3xl md:min-w-3xl md:px-0 ">
+      <div className={`fixed bottom-6 z-50 transition-all duration-300 ${
+        sidebarState === "collapsed" 
+          ? "left-[calc(14%+1.5rem)]" 
+          : "left-1/2 transform -translate-x-1/2"
+      } min-w-md px-4 lg:min-w-3xl md:min-w-3xl md:px-0 lg:px-0 mx-auto`}>
         <AIChatInput />
       </div>
     </div>

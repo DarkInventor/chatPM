@@ -227,7 +227,7 @@ const AIChatInput = () => {
                 }}
               >
                 <Lightbulb
-                  className="group-hover:fill-yellow-300 transition-all"
+                  className="group-hover:fill-gray-900 transition-all"
                   size={18}
                 />
                 Think

@@ -11,6 +11,8 @@ import {
   MessageCircleQuestion,
   Search,
   Settings2,
+  Sparkle,
+  SparkleIcon,
   Sparkles,
   Trash2,
 } from "lucide-react"
@@ -57,6 +59,12 @@ const data = {
       title: "Home",
       url: "#",
       icon: Home,
+      isActive: true,
+    },
+    {
+      title: "Ask AI",
+      url: "#",
+      icon: Sparkles,
       isActive: true,
     },
     {

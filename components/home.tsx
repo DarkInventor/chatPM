@@ -109,7 +109,7 @@ export function Home() {
       <div className="px-6 py-6 border-b">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Good morning, <span className="bg-blue-100 text-blue-900 px-1 rounded">Sam</span>! ☀️</h1>
+            <h1 className="text-2xl font-bold text-foreground">Good morning, <span className="bg-blue-100 text-blue-900 px-1 rounded">Kathan</span>! ☀️</h1>
             <p className="text-muted-foreground mt-1">Here&apos;s what&apos;s happening today.</p>
           </div>
           <Button className="flex items-center gap-2 shadow-none">

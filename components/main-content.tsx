@@ -3,12 +3,12 @@
 import { useNavigation } from "@/contexts/navigation-context"
 import { Home } from "./home"
 import { SearchPage } from "./search"
-import { AskAI } from "./ask-ai"
 import { InboxPage } from "./inbox"
 import { CalendarPage } from "./calendar"
 import { TemplatesPage } from "./templates"
 import { TrashPage } from "./trash"
 import { HelpPage } from "./help"
+import { Chat } from "./chat"
 
 export function MainContent() {
   const { activeItem } = useNavigation()
@@ -19,7 +19,7 @@ export function MainContent() {
     case 'search':
       return <SearchPage />
     case 'ask-ai':
-      return <AskAI />
+      return <Chat />
     case 'inbox':
       return <InboxPage />
     case 'calendar':

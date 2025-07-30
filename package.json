@@ -40,8 +40,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotted-map": "^2.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.4.4",
+    "react-use-measure": "^2.1.7",
+    "recharts": "^3.1.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5"

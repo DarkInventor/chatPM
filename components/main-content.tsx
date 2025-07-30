@@ -8,7 +8,7 @@ import { CalendarPage } from "./calendar"
 import { TemplatesPage } from "./templates"
 import { TrashPage } from "./trash"
 import { HelpPage } from "./help"
-import { Chat } from "./chat"
+import { Chat } from "./chart"
 
 export function MainContent() {
   const { activeItem } = useNavigation()

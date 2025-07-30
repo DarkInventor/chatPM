@@ -124,8 +124,11 @@ const data = {
 }
 
 export function SidebarLeft({
+  onWorkspaceSelect,
   ...props
-}: React.ComponentProps<typeof Sidebar>) {
+}: React.ComponentProps<typeof Sidebar> & {
+  onWorkspaceSelect?: (workspace: { name: string; emoji: React.ReactNode; id: string }) => void
+}) {
   return (
     <Sidebar className="border-r-0" {...props}>
       <SidebarHeader>
@@ -134,7 +137,7 @@ export function SidebarLeft({
       </SidebarHeader>
       <SidebarContent>
         {/* <NavFavorites favorites={data.favorites} /> */}
-        <NavWorkspaces workspaces={data.workspaces} />
+        <NavWorkspaces workspaces={data.workspaces} onWorkspaceSelect={onWorkspaceSelect} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

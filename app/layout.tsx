@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IndieHack OS",
-  description: "Project management and collaboration platform",
+  title: "ChatPM - AI-Powered Project Management",
+  description: "Streamline your projects with intelligent collaboration tools and AI assistance. Perfect for modern teams.",
 };
 
 export default function RootLayout({

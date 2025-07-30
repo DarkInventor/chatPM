@@ -59,7 +59,7 @@ export function HeroSection() {
                                 loop
                                 muted
                                 playsInline
-                                className="size-full object-cover opacity-80 invert "
+                                className="size-full object-cover opacity-100 invert "
                                 src="/hero-video.mp4"></video>
                         </div>
                     </div>

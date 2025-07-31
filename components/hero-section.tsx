@@ -60,7 +60,7 @@ export function HeroSection() {
                                 muted
                                 playsInline
                                 className="size-full object-cover opacity-90 invert hidden lg:block"
-                                src="/hero-video.mp4"></video>
+                                src="https://pub-02af6111e25b4077b06982fb72057690.r2.dev/hero-video.mp4"></video>
                         </div>
                     </div>
                 </section>

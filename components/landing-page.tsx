@@ -377,7 +377,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="platform" className="py-20 bg-background">
+        <section id="testimonials" className="py-20 bg-background">
           <div className="aspect-[2/3] min-h-[920px] lg:max-w-7xl max-w-[400px] overflow-hidden rounded-3xl border-none border-black/10 sm:aspect-video lg:rounded-[3rem] dark:border-white/5 mx-auto  px-6 lg:px-12">
             <div className="h-full p-8 lg:p-16">
               <div className="mx-auto max-w-3xl text-center mb-16">

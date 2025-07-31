@@ -1,0 +1,197 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(resource) {
+      return isAuthenticated() && request.auth.uid == resource.data.createdBy;
+    }
+    
+    function isOrganizationMember(organizationId) {
+      return isAuthenticated() && 
+        organizationId in get(/databases/$(database)/documents/organizations/$(organizationId)).data.members;
+    }
+    
+    function isWorkspaceMember(workspaceId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/workspace_members/$(workspaceId)_$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/workspace_members/$(workspaceId)_$(request.auth.uid)).data.status == 'active';
+    }
+    
+    function hasWorkspacePermission(workspaceId, permission) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/workspace_members/$(workspaceId)_$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/workspace_members/$(workspaceId)_$(request.auth.uid)).data.permissions[permission] == true;
+    }
+
+    // User Profiles
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Organizations
+    match /organizations/{organizationId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid in resource.data.members ||
+        request.auth.uid == resource.data.createdBy
+      );
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.createdBy &&
+        request.resource.data.owners is list &&
+        request.resource.data.members is list &&
+        request.auth.uid in request.resource.data.owners &&
+        request.auth.uid in request.resource.data.members;
+      allow update: if isAuthenticated() && (
+        request.auth.uid in resource.data.owners || 
+        request.auth.uid == resource.data.createdBy
+      );
+      allow delete: if isAuthenticated() && (
+        request.auth.uid in resource.data.owners || 
+        request.auth.uid == resource.data.createdBy
+      );
+    }
+
+    // Workspaces
+    match /workspaces/{workspaceId} {
+      allow read: if isAuthenticated() && (
+        isWorkspaceMember(workspaceId) ||
+        request.auth.uid in get(/databases/$(database)/documents/organizations/$(resource.data.organizationId)).data.members
+      );
+      allow create: if isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/organizations/$(request.resource.data.organizationId)).data.members &&
+        request.auth.uid == request.resource.data.createdBy;
+      allow update: if hasWorkspacePermission(workspaceId, 'canManageWorkspace');
+      allow delete: if hasWorkspacePermission(workspaceId, 'canDeleteWorkspace');
+    }
+
+    // Workspace Members
+    match /workspace_members/{memberId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isWorkspaceMember(resource.data.workspaceId)
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == request.resource.data.userId ||
+        hasWorkspacePermission(request.resource.data.workspaceId, 'canInviteMembers') ||
+        request.auth.uid == request.resource.data.invitedBy
+      );
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canManageRoles')
+      );
+      allow delete: if hasWorkspacePermission(resource.data.workspaceId, 'canManageRoles');
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId) && (
+        hasWorkspacePermission(resource.data.workspaceId, 'canViewAllProjects') ||
+        request.auth.uid in resource.data.members ||
+        request.auth.uid == resource.data.createdBy
+      );
+      allow create: if hasWorkspacePermission(resource.data.workspaceId, 'canCreateProjects');
+      allow update: if isWorkspaceMember(resource.data.workspaceId) && (
+        request.auth.uid == resource.data.createdBy ||
+        request.auth.uid in resource.data.members ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canViewAllProjects')
+      );
+      allow delete: if isWorkspaceMember(resource.data.workspaceId) && (
+        request.auth.uid == resource.data.createdBy ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canViewAllProjects')
+      );
+    }
+
+    // Tasks
+    match /tasks/{taskId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId);
+      allow create: if hasWorkspacePermission(resource.data.workspaceId, 'canCreateProjects');
+      allow update: if isWorkspaceMember(resource.data.workspaceId) && (
+        request.auth.uid == resource.data.createdBy ||
+        request.auth.uid in resource.data.assignedTo ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canViewAllProjects')
+      );
+      allow delete: if isWorkspaceMember(resource.data.workspaceId) && (
+        request.auth.uid == resource.data.createdBy ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canViewAllProjects')
+      );
+    }
+
+    // Activities
+    match /activities/{activityId} {
+      allow read: if isAuthenticated() && (
+        isOrganizationMember(resource.data.organizationId) ||
+        (exists(resource.data.workspaceId) && isWorkspaceMember(resource.data.workspaceId))
+      );
+      allow create: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Invitations
+    match /invitations/{invitationId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.invitedBy ||
+        request.auth.uid in get(/databases/$(database)/documents/profiles).where('email', '==', resource.data.email).limit(1).get().data.uid
+      );
+      allow create: if isAuthenticated() && 
+        hasWorkspacePermission(resource.data.workspaceId, 'canInviteMembers');
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.invitedBy ||
+        request.auth.uid in get(/databases/$(database)/documents/profiles).where('email', '==', resource.data.email).limit(1).get().data.uid
+      );
+    }
+
+    // User Presence
+    match /user_presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Integrations
+    match /integrations/{integrationId} {
+      allow read: if isAuthenticated() && (
+        isOrganizationMember(resource.data.organizationId) ||
+        (exists(resource.data.workspaceId) && isWorkspaceMember(resource.data.workspaceId))
+      );
+      allow create: if isAuthenticated() && 
+        isOrganizationMember(resource.data.organizationId) &&
+        hasWorkspacePermission(resource.data.workspaceId, 'canManageIntegrations');
+      allow update, delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.createdBy ||
+        hasWorkspacePermission(resource.data.workspaceId, 'canManageIntegrations')
+      );
+    }
+
+    // AI Conversations
+    match /ai_conversations/{conversationId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Workspace Analytics
+    match /workspace_analytics/{analyticsId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId);
+      allow write: if false; // Only server-side writes
+    }
+
+    // File Uploads
+    match /file_uploads/{fileId} {
+      allow read: if isAuthenticated() && (
+        isOrganizationMember(resource.data.organizationId) ||
+        (exists(resource.data.workspaceId) && isWorkspaceMember(resource.data.workspaceId)) ||
+        resource.data.isPublic == true
+      );
+      allow create: if isAuthenticated() && 
+        isOrganizationMember(resource.data.organizationId);
+      allow update, delete: if isAuthenticated() && 
+        request.auth.uid == resource.data.uploadedBy;
+    }
+  }
+}

@@ -6,7 +6,7 @@ export function Features() {
             <div className="mx-auto max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
                 <div className="relative z-10 grid items-center gap-4 md:grid-cols-2 md:gap-12">
                     <h2 className="text-4xl font-semibold">  The <span className="text-primary">$2.3 Trillion</span> Problem Everyone Ignores</h2>
-                    <p className="max-w-sm sm:ml-auto text-muted-foreground text-xl">
+                    <p className="max-w-sm sm:ml-auto text-muted-foreground text-xl py-20 xl:py-0 lg:py-0 md:py-0 [@media(min-width:1800px)]:py-0">
                         While companies spend billions on productivity tools, 73% of knowledge workers still waste 21 hours per week on inefficient processes. The problem isn&apos;t more tools—it&apos;s the absence of intelligent infrastructure.
                         <br />
                         <span className="block mt-8 text-lg text-foreground font-medium">

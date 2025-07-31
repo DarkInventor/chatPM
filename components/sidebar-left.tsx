@@ -19,6 +19,7 @@ import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavWorkspaces } from "@/components/nav-workspaces"
 import { TeamSwitcher } from "@/components/team-switcher"
+import { useWorkspace } from "@/contexts/workspace-context"
 import {
   Sidebar,
   SidebarContent,
@@ -129,15 +130,49 @@ export function SidebarLeft({
 }: React.ComponentProps<typeof Sidebar> & {
   onWorkspaceSelect?: (workspace: { name: string; emoji: React.ReactNode; id: string }) => void
 }) {
+  const { 
+    organizations, 
+    workspaces, 
+    currentWorkspace, 
+    setCurrentWorkspace,
+    isLoadingWorkspaces 
+  } = useWorkspace()
+
+  // Transform organizations to match TeamSwitcher interface
+  const teams = organizations.map(org => ({
+    name: org.name,
+    logo: Command, // Default logo
+    plan: org.plan.charAt(0).toUpperCase() + org.plan.slice(1) as "Free" | "Startup" | "Enterprise"
+  }))
+
+  // Transform workspaces to match NavWorkspaces interface
+  const workspaceData = workspaces.map(workspace => ({
+    name: workspace.name,
+    emoji: workspace.emoji,
+    id: workspace.id
+  }))
+
+  const handleWorkspaceSelect = (workspace: { name: string; emoji: React.ReactNode; id: string }) => {
+    const selectedWorkspace = workspaces.find(w => w.id === workspace.id)
+    if (selectedWorkspace) {
+      setCurrentWorkspace(selectedWorkspace)
+    }
+    onWorkspaceSelect?.(workspace)
+  }
+
   return (
     <Sidebar className="border-r-0" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={teams.length > 0 ? teams : data.teams} />
         <NavMain items={data.navMain} />
       </SidebarHeader>
       <SidebarContent>
-        {/* <NavFavorites favorites={data.favorites} /> */}
-        <NavWorkspaces workspaces={data.workspaces} onWorkspaceSelect={onWorkspaceSelect} />
+        <NavWorkspaces 
+          workspaces={workspaceData} 
+          onWorkspaceSelect={handleWorkspaceSelect}
+          currentWorkspace={currentWorkspace}
+          isLoading={isLoadingWorkspaces}
+        />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarRail />

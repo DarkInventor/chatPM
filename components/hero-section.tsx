@@ -33,7 +33,7 @@ export function HeroSection() {
                                         asChild
                                         size="lg"
                                         className="h-12 rounded-full pl-5 pr-3 text-base">
-                                        <Link href="#link">
+                                        <Link href="/dashboard">
                                             <span className="text-nowrap">Start Building</span>
                                             <ChevronRight className="ml-1" />
                                         </Link>
@@ -53,18 +53,18 @@ export function HeroSection() {
                            
                         </div>
                       
-                        <div className="aspect-[2/3] absolute inset-1 overflow-hidden rounded-3xl border border-black/10 sm:aspect-video lg:rounded-[3rem] dark:border-white/5">
+                        <div className="aspect-[2/3] absolute inset-1 overflow-hidden rounded-none lg:rounded-3xl border-none lg:border border-black/10 sm:aspect-video lg:rounded-[3rem] dark:border-white/5">
                             <video
                                 autoPlay
                                 loop
                                 muted
                                 playsInline
-                                className="size-full object-cover opacity-100 invert "
+                                className="size-full object-cover opacity-100 invert hidden lg:block"
                                 src="/hero-video.mp4"></video>
                         </div>
                     </div>
                 </section>
-                <section className="bg-background pb-2">
+                <section className="bg-background pb-2 [@media(min-width:1800px)]:mt-60">
                     <div className="group relative m-auto max-w-7xl px-6">
                         <div className="flex flex-col items-center md:flex-row">
                             <div className="md:max-w-44 md:border-r md:pr-6">
@@ -258,7 +258,7 @@ const HeroHeader = () => {
                                 <Button
                                     asChild
                                     size="sm">
-                                    <Link href="#">
+                                    <Link href="/signup">
                                         <span>Sign Up</span>
                                     </Link>
                                 </Button>

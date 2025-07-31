@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { SidebarRight } from "@/components/sidebar-right"
+import { InvitationPopup } from "@/components/invitation-popup"
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { Separator } from "@radix-ui/react-separator"
 
@@ -70,6 +71,9 @@ export default function Page() {
       </SidebarInset>
       
         <SidebarRight />
+        
+        {/* Invitation Popup for pending invitations */}
+        <InvitationPopup />
       </SidebarProvider>
     </NavigationProvider>
   )

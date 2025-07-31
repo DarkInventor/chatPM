@@ -29,17 +29,60 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/contexts/auth-context"
+import { MemberService } from "@/lib/member-service"
+import * as React from "react"
 
 export function NavUser({
   user,
 }: {
-  user: {
+  user?: {
     name: string
     email: string
     avatar: string
   }
 }) {
   const { isMobile } = useSidebar()
+  const { user: authUser, userProfile, logout } = useAuth()
+  const [pendingInvitations, setPendingInvitations] = React.useState(0)
+
+  // Use authenticated user data if available, fallback to prop
+  const displayUser = authUser && userProfile ? {
+    name: userProfile.displayName || authUser.displayName || 'User',
+    email: authUser.email || '',
+    avatar: userProfile.photoURL || authUser.photoURL || ''
+  } : user
+
+  // Load pending invitations count
+  React.useEffect(() => {
+    const loadPendingInvitations = async () => {
+      if (userProfile?.email) {
+        try {
+          const invitations = await MemberService.getPendingInvitationsForUser(userProfile.email)
+          setPendingInvitations(invitations.length)
+        } catch (error) {
+          console.error('Error loading pending invitations:', error)
+        }
+      }
+    }
+
+    loadPendingInvitations()
+  }, [userProfile?.email])
+
+  if (!displayUser) {
+    return null
+  }
+
+  const getInitials = (name: string, email: string) => {
+    if (name && name.trim()) {
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    }
+    return email.slice(0, 2).toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   return (
     <SidebarMenu>
@@ -51,12 +94,14 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
+                <AvatarFallback className="rounded-lg">
+                  {getInitials(displayUser.name, displayUser.email)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+                <span className="truncate font-medium">{displayUser.name}</span>
+                <span className="truncate text-xs">{displayUser.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -70,12 +115,14 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
+                  <AvatarFallback className="rounded-lg">
+                    {getInitials(displayUser.name, displayUser.email)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-medium">{displayUser.name}</span>
+                  <span className="truncate text-xs">{displayUser.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -96,13 +143,20 @@ export function NavUser({
                 <CreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.reload()}>
                 <Bell />
-                Notifications
+                <div className="flex items-center justify-between w-full">
+                  <span>Notifications</span>
+                  {pendingInvitations > 0 && (
+                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                      {pendingInvitations} invites
+                    </span>
+                  )}
+                </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>

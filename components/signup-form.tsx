@@ -8,31 +8,35 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authService } from "@/lib/auth"
+import { useAuth } from "@/contexts/auth-context"
 
-export function LoginForm({
+export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const { createProfileWithName } = useAuth()
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password) return
+    if (!name || !email || !password) return
 
     setIsLoading(true)
     setError("")
 
     try {
-      const { user, error } = await authService.signInWithEmail(email, password)
+      const { user, error } = await authService.signUpWithEmail(email, password)
       if (error) {
         setError(error)
       } else if (user) {
-        // Profile creation is handled by auth context
-        console.log("User logged in:", user.uid)
-        window.location.href = "/dashboard"
+        // Create profile with the provided name
+        await createProfileWithName(user, name)
+        console.log("User signed up successfully with name:", user.uid, name)
+        window.location.href = "/onboarding"
       }
     } catch (err) {
       setError("An unexpected error occurred")
@@ -41,7 +45,7 @@ export function LoginForm({
     }
   }
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignup = async () => {
     setIsLoading(true)
     setError("")
 
@@ -51,8 +55,8 @@ export function LoginForm({
         setError(error)
       } else if (user) {
         // Profile creation is handled by auth context
-        console.log("User logged in with Google:", user.uid)
-        window.location.href = "/dashboard"
+        console.log("User signed up with Google:", user.uid)
+        window.location.href = "/onboarding"
       }
     } catch (err) {
       setError("An unexpected error occurred")
@@ -61,7 +65,7 @@ export function LoginForm({
     }
   }
 
-  const handleAppleLogin = async () => {
+  const handleAppleSignup = async () => {
     setIsLoading(true)
     setError("")
 
@@ -71,8 +75,8 @@ export function LoginForm({
         setError(error)
       } else if (user) {
         // Profile creation is handled by auth context
-        console.log("User logged in with Apple:", user.uid)
-        window.location.href = "/dashboard"
+        console.log("User signed up with Apple:", user.uid)
+        window.location.href = "/onboarding"
       }
     } catch (err) {
       setError("An unexpected error occurred")
@@ -83,7 +87,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <form onSubmit={handleEmailLogin}>
+      <form onSubmit={handleEmailSignup}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
             <a
@@ -95,11 +99,11 @@ export function LoginForm({
               </div>
               <span className="sr-only">Acme Inc.</span>
             </a>
-            <h1 className="text-xl font-bold">Welcome to ChatPM</h1>
+            <h1 className="text-xl font-bold">Create your account</h1>
             <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <a href="/signup" className="underline underline-offset-4">
-                Sign up
+              Already have an account?{" "}
+              <a href="/login" className="underline underline-offset-4">
+                Log in
               </a>
             </div>
           </div>
@@ -107,6 +111,18 @@ export function LoginForm({
             <div className="text-sm text-red-600 text-center">{error}</div>
           )}
           <div className="flex flex-col gap-6">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
             <div className="grid gap-3">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -128,11 +144,12 @@ export function LoginForm({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 disabled={isLoading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
           </div>
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -145,7 +162,7 @@ export function LoginForm({
               variant="outline" 
               type="button" 
               className="w-full" 
-              onClick={handleAppleLogin}
+              onClick={handleAppleSignup}
               disabled={isLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -160,7 +177,7 @@ export function LoginForm({
               variant="outline" 
               type="button" 
               className="w-full" 
-              onClick={handleGoogleLogin}
+              onClick={handleGoogleSignup}
               disabled={isLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

@@ -40,7 +40,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Notifications } from "@/components/notifications"
-import { Message02, Trash } from "dicons"
+import { Message02, Sparkles, Trash } from "dicons"
 
 // Workspace Creation Dialog Component
 function WorkspaceCreationDialog() {
@@ -512,7 +512,7 @@ export function SidebarRight({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton>
-                      <Message02 className="h-4 w-4" />
+                      <Sparkles className="h-4 w-4" />
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium">{selectedModel.name}</p>
                         <p className="text-xs text-muted-foreground">{selectedModel.provider}</p>

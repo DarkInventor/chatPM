@@ -59,12 +59,12 @@ export function HeroSection() {
                                 loop
                                 muted
                                 playsInline
-                                className="size-full object-cover opacity-70 invert hidden lg:block"
+                                className="size-full object-cover opacity-90 invert hidden lg:block"
                                 src="/hero-video.mp4"></video>
                         </div>
                     </div>
                 </section>
-                <section className="bg-background pb-2 [@media(min-width:1800px)]:mt-60">
+                <section className="bg-background pb-2 [@media(min-width:1800px)]:mt-60 ">
                     <div className="group relative m-auto max-w-7xl px-6">
                         <div className="flex flex-col items-center md:flex-row">
                             <div className="md:max-w-44 md:border-r md:pr-6">

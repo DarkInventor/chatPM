@@ -142,6 +142,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.uid && currentOrganization?.id) {
       console.log(`🔄 Organization changed to: ${currentOrganization.name} - Loading workspaces...`);
+      // Save current organization to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentOrganizationId', currentOrganization.id);
+      }
       loadWorkspaces();
     } else {
       setWorkspaces([]);
@@ -156,6 +160,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (currentWorkspace?.id) {
       console.log(`🔄 Workspace changed to: ${currentWorkspace.name} - Loading members and activities...`);
+      // Save current workspace to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentWorkspaceId', currentWorkspace.id);
+      }
       loadWorkspaceMembers();
       loadWorkspaceActivities();
     } else {
@@ -193,10 +201,23 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       console.log(`User ${user.uid} has access to ${orgs.length} organizations:`, orgs.map(org => ({ id: org.id, name: org.name, createdBy: org.createdBy })));
       setOrganizations(orgs);
       
-      // Set current organization if not set (default to first one)
+      // Set current organization if not set (try to restore from localStorage first)
       if (!currentOrganization && orgs.length > 0) {
-        setCurrentOrganization(orgs[0]);
-        console.log(`Set current organization to:`, orgs[0].name);
+        let orgToSet = orgs[0]; // default to first
+        
+        // Try to restore from localStorage
+        if (typeof window !== 'undefined') {
+          const savedOrgId = localStorage.getItem('currentOrganizationId');
+          if (savedOrgId) {
+            const savedOrg = orgs.find(org => org.id === savedOrgId);
+            if (savedOrg) {
+              orgToSet = savedOrg;
+            }
+          }
+        }
+        
+        setCurrentOrganization(orgToSet);
+        console.log(`Set current organization to:`, orgToSet.name);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
@@ -222,10 +243,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           console.log('Received workspace update:', workspaceList.length, 'workspaces');
           setWorkspaces(workspaceList);
           
-          // Set current workspace if not set (default to default workspace or first one)
+          // Set current workspace if not set (try to restore from localStorage first)
           if (!currentWorkspace && workspaceList.length > 0) {
-            const defaultWorkspace = workspaceList.find(w => w.isDefault) || workspaceList[0];
-            setCurrentWorkspace(defaultWorkspace);
+            let workspaceToSet = workspaceList.find(w => w.isDefault) || workspaceList[0]; // default
+            
+            // Try to restore from localStorage
+            if (typeof window !== 'undefined') {
+              const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
+              if (savedWorkspaceId) {
+                const savedWorkspace = workspaceList.find(w => w.id === savedWorkspaceId);
+                if (savedWorkspace) {
+                  workspaceToSet = savedWorkspace;
+                }
+              }
+            }
+            
+            setCurrentWorkspace(workspaceToSet);
           }
           
           setIsLoadingWorkspaces(false);

@@ -20,8 +20,11 @@ import {
   ChatMessage, 
   ChatTypingIndicator,
   ChatReaction,
+  WorkspaceMember,
+  UserProfile,
   COLLECTIONS 
 } from "./types";
+import { NotificationService } from "./notification-service";
 
 export class ChatService {
   // Send a message
@@ -60,6 +63,44 @@ export class ChatService {
       }
 
       await setDoc(messageRef, message);
+
+      // Create notifications for other workspace members (async, don't block message sending)
+      try {
+        // Get workspace members
+        const membersQuery = query(
+          collection(db, COLLECTIONS.WORKSPACE_MEMBERS),
+          where('workspaceId', '==', workspaceId),
+          where('status', '==', 'active')
+        );
+        const membersSnapshot = await getDocs(membersQuery);
+        const memberUserIds = membersSnapshot.docs.map(doc => doc.data().userId);
+
+        // Get workspace info
+        const workspaceDoc = await getDoc(doc(db, COLLECTIONS.WORKSPACES, workspaceId));
+        const workspaceName = workspaceDoc.exists() ? workspaceDoc.data().name : 'Unknown Workspace';
+
+        // Get sender info
+        const senderDoc = await getDoc(doc(db, COLLECTIONS.PROFILES, userId));
+        const senderName = senderDoc.exists() ? senderDoc.data().displayName : 'Unknown User';
+        const senderAvatar = senderDoc.exists() ? senderDoc.data().photoURL : undefined;
+
+        // Create notifications (don't await - let it happen in background)
+        NotificationService.createNotification(
+          workspaceId,
+          workspaceName,
+          organizationId,
+          messageId,
+          userId,
+          senderName,
+          content,
+          type,
+          memberUserIds,
+          senderAvatar
+        );
+      } catch (error) {
+        console.error('Error creating notifications:', error);
+        // Don't fail the message send if notifications fail
+      }
 
       return { success: true, messageId };
     } catch (error: any) {

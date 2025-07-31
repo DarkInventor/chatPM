@@ -381,6 +381,31 @@ export interface ChatTypingIndicator {
   startedAt: Timestamp;
 }
 
+export interface ChatNotification {
+  id: string;
+  workspaceId: string;
+  workspaceName: string;
+  organizationId: string;
+  messageId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  content: string;
+  messageType: 'text' | 'image' | 'file' | 'system';
+  isRead: boolean;
+  userId: string; // Who should receive this notification
+  createdAt: Timestamp;
+}
+
+export interface WorkspaceUnreadCount {
+  workspaceId: string;
+  userId: string;
+  unreadCount: number;
+  lastReadMessageId?: string;
+  lastMessageAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // Database Collection Names (for consistency)
 export const COLLECTIONS = {
   PROFILES: 'profiles',
@@ -398,5 +423,7 @@ export const COLLECTIONS = {
   WORKSPACE_ANALYTICS: 'workspace_analytics',
   FILE_UPLOADS: 'file_uploads',
   CHAT_MESSAGES: 'chat_messages',
-  CHAT_TYPING: 'chat_typing'
+  CHAT_TYPING: 'chat_typing',
+  CHAT_NOTIFICATIONS: 'chat_notifications',
+  WORKSPACE_UNREAD_COUNTS: 'workspace_unread_counts'
 } as const;

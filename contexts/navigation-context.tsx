@@ -12,10 +12,27 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined)
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [activeItem, setActiveItem] = useState<NavigationItem>('home')
+  const [activeItem, setActiveItem] = useState<NavigationItem>(() => {
+    // Restore navigation state from localStorage on initial load
+    if (typeof window !== 'undefined') {
+      const savedActiveItem = localStorage.getItem('activeNavigationItem')
+      if (savedActiveItem && ['home', 'search', 'chat', 'ask-ai', 'inbox', 'calendar', 'templates', 'trash', 'help'].includes(savedActiveItem)) {
+        return savedActiveItem as NavigationItem
+      }
+    }
+    return 'home'
+  })
+
+  const setActiveItemWithPersistence = (item: NavigationItem) => {
+    setActiveItem(item)
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeNavigationItem', item)
+    }
+  }
 
   return (
-    <NavigationContext.Provider value={{ activeItem, setActiveItem }}>
+    <NavigationContext.Provider value={{ activeItem, setActiveItem: setActiveItemWithPersistence }}>
       {children}
     </NavigationContext.Provider>
   )

@@ -3,6 +3,8 @@
 import * as React from "react"
 import { Plus, X, Hash } from "lucide-react"
 import { useWorkspace } from "@/contexts/workspace-context"
+import { useAuth } from "@/contexts/auth-context"
+import { NotificationService } from "@/lib/notification-service"
 import { Workspace as WorkspaceType } from "@/lib/types"
 import {
   SidebarGroup,
@@ -47,12 +49,14 @@ export function NavWorkspaces({
   isLoading?: boolean
 }) {
   const { createWorkspace, deleteWorkspace, hasPermission } = useWorkspace()
+  const { user } = useAuth()
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = React.useState("")
   const [newWorkspaceEmoji, setNewWorkspaceEmoji] = React.useState("#")
   const [newWorkspaceDescription, setNewWorkspaceDescription] = React.useState("")
   const [isCreating, setIsCreating] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [unreadCounts, setUnreadCounts] = React.useState<Record<string, number>>({})
 
 
   const handleAddWorkspace = async () => {

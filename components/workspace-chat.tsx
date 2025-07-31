@@ -1,16 +1,15 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Smile, Paperclip, MoreVertical, Reply, Edit, Trash, Search } from 'lucide-react'
+import { Send, Paperclip, MoreVertical, Reply, Edit, Trash, ThumbsUp } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { useWorkspace } from '@/contexts/workspace-context'
 import { ChatService } from '@/lib/chat-service'
-import { ChatMessage, ChatTypingIndicator, UserProfile } from '@/lib/types'
+import { ChatMessage, ChatTypingIndicator } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSidebar } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,12 +22,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Smile } from 'react-feather'
 
 interface WorkspaceChatProps {
   className?: string
 }
 
-export function WorkspaceChat({ className }: WorkspaceChatProps) {
+export function WorkspaceChat({}: WorkspaceChatProps) {
   const { user } = useAuth()
   const { currentWorkspace, currentOrganization, workspaceMembers } = useWorkspace()
   const { state: sidebarState } = useSidebar()
@@ -37,7 +37,6 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
   const [newMessage, setNewMessage] = useState('')
   const [typingUsers, setTypingUsers] = useState<ChatTypingIndicator[]>([])
   const [isTyping, setIsTyping] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
   const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null)
@@ -45,6 +44,7 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -141,6 +141,52 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
 
     // Clear reply
     setReplyToMessage(null)
+  }
+
+  // Handle file attachment
+  const handleFileAttachment = () => {
+    fileInputRef.current?.click()
+  }
+
+  // Handle file selection
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentWorkspace?.id || !currentOrganization?.id || !user?.uid) return
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB')
+      return
+    }
+
+    // For now, we'll send the file name as a message
+    // In a production app, you'd upload to storage first
+    const fileType = file.type.startsWith('image/') ? 'image' : 'file'
+    const content = `📎 ${file.name}`
+    
+    const result = await ChatService.sendMessage(
+      currentWorkspace.id,
+      currentOrganization.id,
+      user.uid,
+      content,
+      fileType,
+      {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      },
+      replyToMessage?.id
+    )
+
+    if (!result.success) {
+      console.error('Failed to send file:', result.error)
+    }
+
+    // Clear reply and file input
+    setReplyToMessage(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   // Edit message
@@ -356,7 +402,24 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
                               ? 'bg-blue-600 text-white ml-auto' 
                               : 'bg-gray-100 text-gray-900'
                           }`}>
-                            <p className="text-sm leading-relaxed">{message.content}</p>
+                            {/* File attachment display */}
+                            {(message.type === 'image' || message.type === 'file') && message.metadata ? (
+                              <div className="flex items-center gap-2">
+                                <div className={`p-2 rounded-lg ${isOwn ? 'bg-blue-500' : 'bg-gray-200'}`}>
+                                  <Paperclip className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium">{message.metadata.fileName || 'Unknown file'}</p>
+                                  {message.metadata.fileSize && (
+                                    <p className="text-xs opacity-70">
+                                      {(message.metadata.fileSize / 1024 / 1024).toFixed(1)} MB
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm leading-relaxed">{message.content}</p>
+                            )}
                             {message.editedAt && (
                               <span className="text-xs opacity-70 mt-1 block">(edited)</span>
                             )}
@@ -415,16 +478,15 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className={`h-6 px-2 ${
+                                    className={`h-6 px-2 flex items-center gap-1 ${
                                       reaction.users.includes(user?.uid || '') 
-                                        ? 'bg-blue-100 border-blue-300' 
+                                        ? 'bg-blue-100 border-blue-300 text-blue-700' 
                                         : ''
                                     }`}
                                     onClick={() => handleReaction(message.id, reaction.emoji)}
                                   >
-                                    <span className="text-xs">
-                                      {reaction.emoji} {reaction.count}
-                                    </span>
+                                    <ThumbsUp className="h-3 w-3" />
+                                    <span className="text-xs">{reaction.count}</span>
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -509,15 +571,35 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
           ? "left-[calc(14%+1.5rem)]" 
           : "left-1/2 transform -translate-x-1/2"
       } min-w-md px-4 lg:min-w-3xl md:min-w-3xl md:px-0 lg:px-0 mx-auto`}>
-        <div className="bg-background border rounded-2xl shadow-lg p-3">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Paperclip className="h-4 w-4" />
-            </Button>
+        <div 
+          className="w-full max-w-3xl border bg-white shadow-sm"
+          style={{ borderRadius: 32 }}
+        >
+          <div className="flex items-center gap-2 p-3">
+            {/* File attachment button */}
+            <button
+              onClick={handleFileAttachment}
+              className="p-3 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+              title="Attach file"
+              type="button"
+            >
+              <Paperclip className="h-5 w-5 text-gray-600" />
+            </button>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.ppt,.pptx"
+              className="hidden"
+            />
+
+            {/* Text Input */}
             <div className="flex-1">
-              <Input
+              <input
                 ref={inputRef}
-                placeholder={`Message ${currentWorkspace.name}...`}
+                type="text"
                 value={newMessage}
                 onChange={handleInputChange}
                 onKeyDown={(e) => {
@@ -526,20 +608,25 @@ export function WorkspaceChat({ className }: WorkspaceChatProps) {
                     handleSendMessage()
                   }
                 }}
-                className="border-0 focus-visible:ring-0 bg-transparent shadow-none"
+                placeholder={`Message ${currentWorkspace.name}...`}
+                className="w-full border-0 outline-none bg-transparent text-base py-2 px-2 placeholder-gray-400"
               />
             </div>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Smile className="h-4 w-4" />
-            </Button>
-            <Button 
-              onClick={handleSendMessage} 
+
+            {/* Send button */}
+            <button
+              onClick={handleSendMessage}
               disabled={!newMessage.trim()}
-              size="sm"
-              className="h-8"
+              className={`p-3 rounded-full font-medium transition-all flex-shrink-0 ${
+                newMessage.trim()
+                  ? 'bg-black hover:bg-gray-800 text-white' 
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              title="Send message"
+              type="button"
             >
-              <Send className="h-4 w-4" />
-            </Button>
+              <Send className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>

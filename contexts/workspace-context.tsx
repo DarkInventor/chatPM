@@ -39,6 +39,7 @@ interface WorkspaceContextType {
   
   // Actions
   createOrganization: (orgData: { name: string; logo?: string; plan: 'free' | 'startup' | 'enterprise' }) => Promise<{ success: boolean; error?: string }>;
+  deleteOrganization: (organizationId: string) => Promise<{ success: boolean; error?: string }>;
   createWorkspace: (workspaceData: { name: string; emoji: string; description?: string; isDefault?: boolean }) => Promise<{ success: boolean; error?: string }>;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => Promise<{ success: boolean; error?: string }>;
   deleteWorkspace: (workspaceId: string) => Promise<{ success: boolean; error?: string }>;
@@ -319,6 +320,30 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
+  const deleteOrganization = async (organizationId: string) => {
+    if (!user?.uid) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const result = await WorkspaceService.deleteOrganization(organizationId, user.uid);
+
+    if (result.success) {
+      // Refresh organizations list and reset current organization
+      await loadOrganizations();
+      // Clear current organization if it was the deleted one
+      if (currentOrganization?.id === organizationId) {
+        setCurrentOrganization(null);
+        setWorkspaces([]);
+        setCurrentWorkspace(null);
+        setWorkspaceMembers([]);
+        setMemberPresence({});
+        setRecentActivities([]);
+      }
+    }
+
+    return result;
+  };
+
   const createWorkspace = async (workspaceData: { name: string; emoji: string; description?: string; isDefault?: boolean }) => {
     if (!user?.uid || !currentOrganization?.id) {
       return { success: false, error: 'User not authenticated or no organization selected' };
@@ -494,6 +519,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     
     // Actions
     createOrganization,
+    deleteOrganization,
     createWorkspace,
     updateWorkspace,
     deleteWorkspace,

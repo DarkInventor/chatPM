@@ -166,6 +166,115 @@ export class WorkspaceService {
     }
   }
 
+  static async deleteOrganization(
+    organizationId: string,
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`Starting deletion of organization ${organizationId} by ${userId}`);
+      
+      // Check if the user is the organization admin/owner
+      const orgDoc = await getDoc(doc(db, COLLECTIONS.ORGANIZATIONS, organizationId));
+      if (!orgDoc.exists()) {
+        return { success: false, error: 'Organization not found' };
+      }
+
+      const orgData = orgDoc.data();
+      
+      if (orgData.createdBy !== userId) {
+        return { success: false, error: 'Only organization admin can delete the organization' };
+      }
+
+      // Get all workspaces in the organization
+      const workspacesQuery = query(
+        collection(db, COLLECTIONS.WORKSPACES),
+        where('organizationId', '==', organizationId)
+      );
+      const workspacesSnapshot = await getDocs(workspacesQuery);
+      const allWorkspaces = workspacesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Get all member records for all workspaces
+      const memberQueries = allWorkspaces.map(workspace => query(
+        collection(db, COLLECTIONS.WORKSPACE_MEMBERS),
+        where('workspaceId', '==', workspace.id)
+      ));
+      const memberSnapshots = await Promise.all(memberQueries.map(q => getDocs(q)));
+      const allMemberDocs = memberSnapshots.flatMap(snapshot => snapshot.docs);
+
+      // Get all activities, notifications, and invitations for this organization
+      const [activitiesSnapshot, notificationsSnapshot, invitationsSnapshot] = await Promise.all([
+        getDocs(query(
+          collection(db, COLLECTIONS.ACTIVITIES),
+          where('organizationId', '==', organizationId)
+        )),
+        getDocs(query(
+          collection(db, COLLECTIONS.NOTIFICATIONS),
+          where('organizationId', '==', organizationId)
+        )),
+        getDocs(query(
+          collection(db, COLLECTIONS.INVITATIONS),
+          where('organizationId', '==', organizationId)
+        ))
+      ]);
+
+      await runTransaction(db, async (transaction) => {
+        // Delete organization
+        const orgRef = doc(db, COLLECTIONS.ORGANIZATIONS, organizationId);
+        transaction.delete(orgRef);
+
+        // Delete all workspaces
+        allWorkspaces.forEach(workspace => {
+          const workspaceRef = doc(db, COLLECTIONS.WORKSPACES, workspace.id);
+          transaction.delete(workspaceRef);
+        });
+
+        // Delete all workspace member records
+        allMemberDocs.forEach(memberDoc => {
+          transaction.delete(memberDoc.ref);
+        });
+
+        // Delete all activities
+        activitiesSnapshot.docs.forEach(doc => {
+          transaction.delete(doc.ref);
+        });
+
+        // Delete all notifications
+        notificationsSnapshot.docs.forEach(doc => {
+          transaction.delete(doc.ref);
+        });
+
+        // Delete all invitations
+        invitationsSnapshot.docs.forEach(doc => {
+          transaction.delete(doc.ref);
+        });
+
+        // Log the deletion activity (in a general activities collection if needed)
+        const activityRef = doc(collection(db, COLLECTIONS.ACTIVITIES));
+        transaction.set(activityRef, {
+          id: activityRef.id,
+          organizationId: 'system', // System-level activity
+          workspaceId: null,
+          userId,
+          type: 'workspace_deleted',
+          action: 'deleted_organization',
+          details: {
+            deletedOrganizationId: organizationId,
+            organizationName: orgData.name,
+            workspacesDeleted: allWorkspaces.length,
+            membersAffected: allMemberDocs.length,
+          },
+          metadata: {},
+          createdAt: serverTimestamp(),
+        });
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error deleting organization:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   static async removeOrganizationMember(
     organizationId: string,
     userIdToRemove: string,

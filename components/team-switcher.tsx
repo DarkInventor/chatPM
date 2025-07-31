@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Plus } from "lucide-react"
+import { ChevronDown, Plus, Trash2 } from "lucide-react"
 import { useWorkspace } from "@/contexts/workspace-context"
+import { useAuth } from "@/contexts/auth-context"
 
 import {
   DropdownMenu,
@@ -52,8 +53,10 @@ export function TeamSwitcher({
     setCurrentOrganization,
     isLoadingOrganizations,
     createOrganization,
+    deleteOrganization,
     refreshData
   } = useWorkspace()
+  const { user } = useAuth()
 
   // Dialog state for creating new organization
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
@@ -61,6 +64,12 @@ export function TeamSwitcher({
   const [newOrgPlan, setNewOrgPlan] = React.useState("free")
   const [isCreating, setIsCreating] = React.useState(false)
   const [error, setError] = React.useState("")
+
+  // Dialog state for deleting organization
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [orgToDelete, setOrgToDelete] = React.useState<{ id: string; name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const [deleteError, setDeleteError] = React.useState("")
 
   // Use Firebase organizations if available, fallback to props
   const activeTeams = organizations.length > 0 ? organizations.map(org => ({
@@ -135,6 +144,32 @@ export function TeamSwitcher({
     }
   }
 
+  const handleDeleteOrganization = async () => {
+    if (!orgToDelete) return
+
+    setIsDeleting(true)
+    setDeleteError("")
+
+    try {
+      const result = await deleteOrganization(orgToDelete.id)
+
+      if (result.success) {
+        setIsDeleteDialogOpen(false)
+        setOrgToDelete(null)
+      } else {
+        setDeleteError(result.error || "Failed to delete organization")
+      }
+    } catch (error) {
+      setDeleteError("An unexpected error occurred")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const isUserAdmin = (org: any) => {
+    return user?.uid && org.createdBy === user.uid
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -158,20 +193,35 @@ export function TeamSwitcher({
               Organizations
             </DropdownMenuLabel>
             {activeTeams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.id || team.name}
-                onClick={() => handleTeamSelect(team)}
-                className="gap-2 p-2"
-              >
-                <div className="flex size-6 items-center justify-center rounded-xs border">
-                  <team.logo className="size-4 shrink-0" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-medium">{team.name}</span>
-                  <span className="text-xs text-muted-foreground">{team.plan}</span>
-                </div>
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-              </DropdownMenuItem>
+              <div key={team.id || team.name} className="flex items-center">
+                <DropdownMenuItem
+                  onClick={() => handleTeamSelect(team)}
+                  className="gap-2 p-2 flex-1"
+                >
+                  <div className="flex size-6 items-center justify-center rounded-xs border">
+                    <team.logo className="size-4 shrink-0" />
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-medium">{team.name}</span>
+                    <span className="text-xs text-muted-foreground">{team.plan}</span>
+                  </div>
+                  <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                {isUserAdmin(organizations.find(org => org.id === team.id)) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setOrgToDelete({ id: team.id, name: team.name })
+                      setIsDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem 
@@ -246,6 +296,42 @@ export function TeamSwitcher({
               disabled={isCreating || !newOrgName.trim()}
             >
               {isCreating ? "Creating..." : "Create Organization"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Organization Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Organization</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{orgToDelete?.name}"? This action cannot be undone. 
+              All workspaces, members, and data in this organization will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="text-sm text-red-600">{deleteError}</div>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setOrgToDelete(null)
+                setDeleteError("")
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteOrganization} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Organization"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -344,6 +344,43 @@ export interface FileUpload {
   createdAt: Timestamp;
 }
 
+// Chat Types
+export interface ChatMessage {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  userId: string;
+  content: string;
+  type: 'text' | 'image' | 'file' | 'system';
+  mentions?: string[]; // User IDs mentioned in message
+  replyTo?: string; // Message ID being replied to
+  editedAt?: Timestamp;
+  reactions?: ChatReaction[];
+  metadata?: {
+    fileName?: string;
+    fileSize?: number;
+    fileUrl?: string;
+    imageUrl?: string;
+    systemAction?: string;
+  };
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ChatReaction {
+  emoji: string;
+  users: string[]; // User IDs who reacted
+  count: number;
+}
+
+export interface ChatTypingIndicator {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  userName: string;
+  startedAt: Timestamp;
+}
+
 // Database Collection Names (for consistency)
 export const COLLECTIONS = {
   PROFILES: 'profiles',
@@ -359,5 +396,7 @@ export const COLLECTIONS = {
   INTEGRATIONS: 'integrations',
   AI_CONVERSATIONS: 'ai_conversations',
   WORKSPACE_ANALYTICS: 'workspace_analytics',
-  FILE_UPLOADS: 'file_uploads'
+  FILE_UPLOADS: 'file_uploads',
+  CHAT_MESSAGES: 'chat_messages',
+  CHAT_TYPING: 'chat_typing'
 } as const;

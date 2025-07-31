@@ -33,9 +33,10 @@ export function NavMain({
     const itemMap: { [key: string]: string } = {
       'Ask AI': 'ask-ai',
       'Home': 'home',
+      'Chat': 'chat', 
       'Inbox': 'inbox'
     }
-    setActiveItem(itemMap[title] as 'ask-ai' | 'home' | 'inbox')
+    setActiveItem(itemMap[title] as 'ask-ai' | 'home' | 'chat' | 'inbox')
   }
 
   return (
@@ -45,6 +46,7 @@ export function NavMain({
           const itemMap: { [key: string]: string } = {
             'Ask AI': 'ask-ai',
             'Home': 'home',
+            'Chat': 'chat',
             'Inbox': 'inbox'
           }
           const isActive = activeItem === itemMap[item.title]

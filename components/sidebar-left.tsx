@@ -8,6 +8,7 @@ import {
   Command,
   Home,
   Inbox,
+  MessageCircle,
   MessageCircleQuestion,
   Search,
   Settings2,
@@ -20,6 +21,7 @@ import { NavSecondary } from "@/components/nav-secondary"
 import { NavWorkspaces } from "@/components/nav-workspaces"
 import { TeamSwitcher } from "@/components/team-switcher"
 import { useWorkspace } from "@/contexts/workspace-context"
+import { useNavigation } from "@/contexts/navigation-context"
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +61,12 @@ const data = {
       icon: Home,
       isActive: true,
     },
+    // {
+    //   title: "Chat",
+    //   url: "#",
+    //   icon: MessageCircle,
+    //   isActive: false,
+    // },
     {
       title: "Ask AI",
       url: "#",
@@ -137,6 +145,7 @@ export function SidebarLeft({
     setCurrentWorkspace,
     isLoadingWorkspaces 
   } = useWorkspace()
+  const { setActiveItem } = useNavigation()
 
   // Transform organizations to match TeamSwitcher interface
   const teams = organizations.map(org => ({
@@ -156,6 +165,8 @@ export function SidebarLeft({
     const selectedWorkspace = workspaces.find(w => w.id === workspace.id)
     if (selectedWorkspace) {
       setCurrentWorkspace(selectedWorkspace)
+      // Automatically switch to chat when a workspace is selected
+      setActiveItem('chat')
     }
     onWorkspaceSelect?.(workspace)
   }

@@ -3,6 +3,7 @@
 import { useNavigation } from "@/contexts/navigation-context"
 import { Home } from "./home"
 import { SearchPage } from "./search"
+import { WorkspaceChat } from "./workspace-chat"
 import { InboxPage } from "./inbox"
 import { CalendarPage } from "./calendar"
 import { TemplatesPage } from "./templates"
@@ -18,6 +19,8 @@ export function MainContent() {
       return <Home />
     case 'search':
       return <SearchPage />
+    case 'chat':
+      return <WorkspaceChat />
     case 'ask-ai':
       return <Chat />
     case 'inbox':

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 
-type NavigationItem = 'home' | 'search' | 'ask-ai' | 'inbox' | 'calendar' | 'templates' | 'trash' | 'help'
+type NavigationItem = 'home' | 'search' | 'chat' | 'ask-ai' | 'inbox' | 'calendar' | 'templates' | 'trash' | 'help'
 
 interface NavigationContextType {
   activeItem: NavigationItem

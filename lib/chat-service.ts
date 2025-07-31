@@ -85,6 +85,14 @@ export class ChatService {
         const senderAvatar = senderDoc.exists() ? senderDoc.data().photoURL : undefined;
 
         // Create notifications (don't await - let it happen in background)
+        console.log('Creating notifications for message:', {
+          workspaceId,
+          workspaceName,
+          memberUserIds,
+          senderId: userId,
+          content: content.substring(0, 50)
+        });
+        
         NotificationService.createNotification(
           workspaceId,
           workspaceName,
@@ -96,7 +104,11 @@ export class ChatService {
           type,
           memberUserIds,
           senderAvatar
-        );
+        ).then(result => {
+          console.log('Notification creation result:', result);
+        }).catch(error => {
+          console.error('Notification creation failed:', error);
+        });
       } catch (error) {
         console.error('Error creating notifications:', error);
         // Don't fail the message send if notifications fail

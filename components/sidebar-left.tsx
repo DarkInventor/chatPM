@@ -172,7 +172,11 @@ export function SidebarLeft({
   }
 
   return (
-    <Sidebar className="border-r-0" {...props}>
+    <Sidebar 
+      collapsible="icon" 
+      className="border-r-0" 
+      {...props}
+    >
       <SidebarHeader>
         <TeamSwitcher teams={teams.length > 0 ? teams : data.teams} />
         <NavMain items={data.navMain} />

@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { MemberService } from "@/lib/member-service"
+import { NotificationService } from "@/lib/notification-service"
+import { NotificationsDropdown } from "@/components/notifications-dropdown"
 import * as React from "react"
 
 export function NavUser({
@@ -45,6 +47,7 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const { user: authUser, userProfile, logout } = useAuth()
   const [pendingInvitations, setPendingInvitations] = React.useState(0)
+  const [unreadNotifications, setUnreadNotifications] = React.useState(0)
 
   // Use authenticated user data if available, fallback to prop
   const displayUser = authUser && userProfile ? {
@@ -68,6 +71,22 @@ export function NavUser({
 
     loadPendingInvitations()
   }, [userProfile?.email])
+
+  // Subscribe to notification count
+  React.useEffect(() => {
+    if (!authUser?.uid) return
+
+    const unsubscribe = NotificationService.subscribeToUserNotifications(
+      authUser.uid,
+      (notifications) => {
+        const unreadCount = notifications.filter(n => !n.isRead).length
+        setUnreadNotifications(unreadCount)
+      },
+      50
+    )
+
+    return unsubscribe
+  }, [authUser?.uid])
 
   if (!displayUser) {
     return null
@@ -143,17 +162,26 @@ export function NavUser({
                 <CreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.reload()}>
-                <Bell />
-                <div className="flex items-center justify-between w-full">
-                  <span>Notifications</span>
-                  {pendingInvitations > 0 && (
-                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                      {pendingInvitations} invites
-                    </span>
-                  )}
-                </div>
-              </DropdownMenuItem>
+              <NotificationsDropdown>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <Bell />
+                  <div className="flex items-center justify-between w-full">
+                    <span>Notifications</span>
+                    <div className="flex items-center gap-2">
+                      {unreadNotifications > 0 && (
+                        <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {unreadNotifications} new
+                        </span>
+                      )}
+                      {pendingInvitations > 0 && (
+                        <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-800 rounded-full">
+                          {pendingInvitations} invites
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </NotificationsDropdown>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>

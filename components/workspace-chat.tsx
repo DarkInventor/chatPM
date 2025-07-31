@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Paperclip, MoreVertical, Reply, Edit, Trash, ThumbsUp } from 'lucide-react'
+import { Send, Paperclip, MoreVertical, Reply, Edit, Trash, ThumbsUp, ThumbsUpIcon } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { useWorkspace } from '@/contexts/workspace-context'
 import { ChatService } from '@/lib/chat-service'
+import { NotificationService } from '@/lib/notification-service'
 import { ChatMessage, ChatTypingIndicator } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Smile } from 'react-feather'
+import { Thumb } from '@radix-ui/react-switch'
 
 interface WorkspaceChatProps {
   className?: string
@@ -55,19 +57,26 @@ export function WorkspaceChat({}: WorkspaceChatProps) {
     scrollToBottom()
   }, [messages])
 
-  // Subscribe to messages
+  // Subscribe to messages and mark workspace as read when user is in chat
   useEffect(() => {
-    if (!currentWorkspace?.id) return
+    if (!currentWorkspace?.id || !user?.uid) return
+
+    // Mark workspace as read when user enters chat
+    NotificationService.markWorkspaceAsRead(currentWorkspace.id, user.uid)
 
     const unsubscribe = ChatService.subscribeToMessages(
       currentWorkspace.id,
       (newMessages) => {
         setMessages(newMessages)
+        // Mark workspace as read when new messages come in while user is actively viewing
+        if (newMessages.length > 0) {
+          NotificationService.markWorkspaceAsRead(currentWorkspace.id, user.uid)
+        }
       }
     )
 
     return unsubscribe
-  }, [currentWorkspace?.id])
+  }, [currentWorkspace?.id, user?.uid])
 
   // Subscribe to typing indicators
   useEffect(() => {
@@ -440,8 +449,8 @@ export function WorkspaceChat({}: WorkspaceChatProps) {
                                 Reply
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleReaction(message.id, '👍')}>
-                                <Smile className="h-4 w-4 mr-2" />
-                                React
+                                <ThumbsUpIcon className="h-4 w-4 mr-2 text-blue-500" />
+                                Like
                               </DropdownMenuItem>
                               {isOwn && (
                                 <>

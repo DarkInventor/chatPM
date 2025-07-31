@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Users, Bot, X, UserPlus, Crown } from "lucide-react"
+import { Plus, Users, Bot, X, UserPlus, Crown, MessageCircle } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
 import { useAuth } from "@/contexts/auth-context"
@@ -39,6 +39,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Notifications } from "@/components/notifications"
+import { Message02, Trash } from "dicons"
 
 // Workspace Creation Dialog Component
 function WorkspaceCreationDialog() {
@@ -381,10 +383,11 @@ export function SidebarRight({
   return (
     <Sidebar
       collapsible="none"
-      className="sticky top-0 hidden h-svh border-l lg:flex"
+      side="right"
+      className="sticky top-0 h-svh border-l"
       {...props}
     >
-      <SidebarHeader className="border-sidebar-border h-16 border-b">
+      <SidebarHeader className="border-sidebar-border h-16 border-none">
         <NavUser />
       </SidebarHeader>
       <SidebarContent>
@@ -485,7 +488,7 @@ export function SidebarRight({
                           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => handleRemoveMember(member.id, member.name)}
                         >
-                          <X className="h-3 w-3" />
+                          <Trash className="h-3 w-3 text-red-500" />
                         </Button>
                       )}
                     </div>
@@ -496,11 +499,11 @@ export function SidebarRight({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSeparator className="mx-0" />
+        {/* <SidebarSeparator className="mx-0" /> */}
 
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
+            {/* <Bot className="h-4 w-4" /> */}
             AI Model
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -509,7 +512,7 @@ export function SidebarRight({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton>
-                      <Bot className="h-4 w-4" />
+                      <Message02 className="h-4 w-4" />
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium">{selectedModel.name}</p>
                         <p className="text-xs text-muted-foreground">{selectedModel.provider}</p>
@@ -533,6 +536,10 @@ export function SidebarRight({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* <SidebarSeparator className="mx-0" /> */}
+
+        <Notifications />
       </SidebarContent>
       {/* <SidebarFooter>
         <SidebarMenu>

@@ -3,7 +3,12 @@
 
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Search, Hash, Clock, Users, Folder, FileText } from "lucide-react"
+import { Search, Hash, Clock, Users, Folder, FileText, MessageCircle, User } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useWorkspace } from "@/contexts/workspace-context"
+import { useNavigation } from "@/contexts/navigation-context"
+import { ChatService } from "@/lib/chat-service"
+import { WorkspaceService } from "@/lib/workspace-service"
 
 import {
   Dialog,
@@ -19,59 +24,16 @@ const PLACEHOLDERS = [
   "Look up deadlines or meetings...",
 ]
 
-// Sample search results data
-const sampleWorkspaces = [
-  { 
-    id: 1, 
-    name: "Personal Life Management", 
-    type: "workspace", 
-    description: "Personal tasks and goals",
-    icon: Hash,
-    color: "bg-gradient-to-br from-blue-500 to-blue-600",
-    textColor: "text-blue-600",
-    bgColor: "bg-blue-50"
-  },
-  { 
-    id: 2, 
-    name: "Professional Development", 
-    type: "workspace", 
-    description: "Career growth and skills",
-    icon: Users,
-    color: "bg-gradient-to-br from-green-500 to-green-600",
-    textColor: "text-green-600",
-    bgColor: "bg-green-50"
-  },
-  { 
-    id: 3, 
-    name: "Creative Projects", 
-    type: "workspace", 
-    description: "Art, writing, and creative work",
-    icon: Folder,
-    color: "bg-gradient-to-br from-purple-500 to-purple-600",
-    textColor: "text-purple-600",
-    bgColor: "bg-purple-50"
-  },
-  { 
-    id: 4, 
-    name: "Home Management", 
-    type: "workspace", 
-    description: "Household tasks and maintenance",
-    icon: FileText,
-    color: "bg-gradient-to-br from-orange-500 to-orange-600",
-    textColor: "text-orange-600",
-    bgColor: "bg-orange-50"
-  },
-  { 
-    id: 5, 
-    name: "Travel & Adventure", 
-    type: "workspace", 
-    description: "Trip planning and experiences",
-    icon: Clock,
-    color: "bg-gradient-to-br from-teal-500 to-teal-600",
-    textColor: "text-teal-600",
-    bgColor: "bg-teal-50"
-  },
-]
+// Search result types
+interface SearchResult {
+  id: string
+  name: string
+  type: 'workspace' | 'member' | 'message'
+  description?: string
+  icon: React.ComponentType<any>
+  onClick: () => void
+  metadata?: any
+}
 
 interface SearchDialogProps {
   open: boolean
@@ -79,12 +41,43 @@ interface SearchDialogProps {
 }
 
 export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
+  const { user } = useAuth()
+  const { workspaces, workspaceMembers, setCurrentWorkspace, isLoadingWorkspaces } = useWorkspace()
+  const { setActiveItem } = useNavigation()
+  
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [showPlaceholder, setShowPlaceholder] = useState(true)
   const [isActive, setIsActive] = useState(false)
   const [inputValue, setInputValue] = useState("")
-  const [filteredResults, setFilteredResults] = useState(sampleWorkspaces)
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Load default workspaces whenever workspaces change or dialog opens
+  useEffect(() => {
+    if (open && !inputValue.trim()) {
+      // Debug logging
+      console.log('Loading default workspaces - workspaces:', workspaces)
+      console.log('Workspaces length:', workspaces.length)
+      
+      // Load all workspaces as default results
+      const defaultResults: SearchResult[] = workspaces.map(workspace => ({
+        id: `workspace-${workspace.id}`,
+        name: workspace.name,
+        type: 'workspace' as const,
+        description: workspace.description || 'Workspace',
+        icon: Hash,
+        onClick: () => {
+          setCurrentWorkspace(workspace)
+          setActiveItem('home')
+          onOpenChange(false)
+        }
+      }))
+      
+      console.log('Setting default results:', defaultResults)
+      setSearchResults(defaultResults)
+    }
+  }, [open, workspaces, inputValue, setCurrentWorkspace, setActiveItem, onOpenChange])
 
   // Focus input when dialog opens
   useEffect(() => {
@@ -96,22 +89,108 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
     } else {
       setIsActive(false)
       setInputValue("")
-      setFilteredResults(sampleWorkspaces)
+      if (!open) {
+        setSearchResults([])
+      }
     }
   }, [open])
 
-  // Filter results based on input
+  // Perform search when input changes
   useEffect(() => {
-    if (!inputValue.trim()) {
-      setFilteredResults(sampleWorkspaces)
-    } else {
-      const filtered = sampleWorkspaces.filter(item =>
-        item.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-        item.description.toLowerCase().includes(inputValue.toLowerCase())
-      )
-      setFilteredResults(filtered)
+    const performSearch = async () => {
+      if (!inputValue.trim()) {
+        // This is handled by the separate useEffect above
+        setIsSearching(false)
+        return
+      }
+
+      setIsSearching(true)
+      const query = inputValue.toLowerCase()
+      const results: SearchResult[] = []
+
+      try {
+        // Search workspaces
+        workspaces.forEach(workspace => {
+          if (
+            workspace.name.toLowerCase().includes(query) ||
+            workspace.description?.toLowerCase().includes(query)
+          ) {
+            results.push({
+              id: `workspace-${workspace.id}`,
+              name: workspace.name,
+              type: 'workspace',
+              description: workspace.description || 'Workspace',
+              icon: Hash,
+              onClick: () => {
+                setCurrentWorkspace(workspace)
+                setActiveItem('home')
+                onOpenChange(false)
+              }
+            })
+          }
+        })
+
+        // Search team members
+        workspaceMembers.forEach(member => {
+          if (
+            member.profile.displayName.toLowerCase().includes(query) ||
+            member.profile.email.toLowerCase().includes(query)
+          ) {
+            results.push({
+              id: `member-${member.userId}`,
+              name: member.profile.displayName,
+              type: 'member',
+              description: member.profile.email,
+              icon: User,
+              onClick: () => {
+                // Could open member profile or start chat
+                console.log('Navigate to member:', member.profile.displayName)
+                onOpenChange(false)
+              },
+              metadata: member
+            })
+          }
+        })
+
+        // Search messages in current workspace (if available)
+        if (workspaces.length > 0) {
+          for (const workspace of workspaces.slice(0, 3)) { // Limit to prevent too many requests
+            try {
+              const messages = await ChatService.searchMessages(workspace.id, query, 5)
+              messages.forEach(message => {
+                const member = workspaceMembers.find(m => m.userId === message.userId)
+                results.push({
+                  id: `message-${message.id}`,
+                  name: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
+                  type: 'message',
+                  description: `by ${member?.profile.displayName || 'Unknown'} in #${workspace.name}`,
+                  icon: MessageCircle,
+                  onClick: () => {
+                    setCurrentWorkspace(workspace)
+                    setActiveItem('chat')
+                    onOpenChange(false)
+                  },
+                  metadata: { message, workspace, member }
+                })
+              })
+            } catch (error) {
+              console.error('Error searching messages in workspace:', workspace.name, error)
+            }
+          }
+        }
+
+        setSearchResults(results.slice(0, 20)) // Limit results
+      } catch (error) {
+        console.error('Search error:', error)
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
     }
-  }, [inputValue])
+
+    const debounceTimer = setTimeout(performSearch, 300)
+    return () => clearTimeout(debounceTimer)
+  }, [inputValue, workspaces, workspaceMembers, setCurrentWorkspace, setActiveItem, onOpenChange])
 
   // Cycle placeholder text when input is inactive
   useEffect(() => {
@@ -198,7 +277,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
             />
             {inputValue && (
               <span className="text-xs text-muted-foreground bg-gray-200 px-2 py-0.5 rounded">
-                {filteredResults.length}
+                {isSearching ? '...' : searchResults.length}
               </span>
             )}
           </div>
@@ -207,32 +286,44 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
         {/* Search Results */}
         <div className="px-4 py-3">
           <div className="space-y-1 max-h-72 overflow-y-auto">
-            {filteredResults.length > 0 ? (
-              filteredResults.map((result) => (
-                <div
-                  key={result.id}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    console.log(`Selected: ${result.name}`)
-                    onOpenChange(false)
-                  }}
-                >
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-gray-600 text-sm font-medium">#</span>
+            {isSearching ? (
+              <div className="text-center py-8">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Searching...</p>
+              </div>
+            ) : isLoadingWorkspaces ? (
+              <div className="text-center py-8">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Loading workspaces...</p>
+              </div>
+            ) : searchResults.length > 0 ? (
+              searchResults.map((result) => {
+                const IconComponent = result.icon
+                return (
+                  <div
+                    key={result.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={result.onClick}
+                  >
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <IconComponent className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground text-sm truncate">
+                        {result.name}
+                      </h3>
+                      {result.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {result.description}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded capitalize">
+                      {result.type}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm truncate">
-                      {result.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {result.description}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
-                    {result.type}
-                  </span>
-                </div>
-              ))
+                )
+              })
             ) : inputValue ? (
               <div className="text-center py-8">
                 <Search className="w-8 h-8 mx-auto mb-3 text-muted-foreground opacity-50" />
@@ -242,8 +333,9 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
             ) : (
               <div className="text-center py-8">
                 <Search className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground mb-1">Search workspaces</p>
-                <p className="text-xs text-muted-foreground">Find workspaces, projects, and tasks</p>
+                <p className="text-sm font-medium text-foreground mb-1">No workspaces found</p>
+                <p className="text-xs text-muted-foreground">Create a workspace to get started</p>
+                <p className="text-xs text-muted-foreground mt-2 opacity-75">Debug: {workspaces.length} workspaces loaded</p>
               </div>
             )}
           </div>

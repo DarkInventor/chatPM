@@ -12,7 +12,8 @@ import {
   onSnapshot,
   serverTimestamp,
   runTransaction,
-  Timestamp
+  Timestamp,
+  getDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { 
@@ -36,16 +37,30 @@ export class NotificationService {
     senderAvatar?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('createNotification called with:', {
+        workspaceId,
+        workspaceName,
+        senderId,
+        senderName,
+        recipientUserIds,
+        messageType,
+        contentLength: content.length
+      });
+      
       // Don't create notifications for the sender
       const recipients = recipientUserIds.filter(id => id !== senderId);
       
+      console.log('Recipients after filtering sender:', recipients);
+      
       if (recipients.length === 0) {
+        console.log('No recipients to notify');
         return { success: true };
       }
 
-      const batch = await runTransaction(db, async (transaction) => {
-        // Create notification for each recipient
-        for (const userId of recipients) {
+      // Create notifications for each recipient
+      for (const userId of recipients) {
+        try {
+          // Create notification
           const notificationRef = doc(collection(db, COLLECTIONS.CHAT_NOTIFICATIONS));
           const notification: ChatNotification = {
             id: notificationRef.id,
@@ -63,27 +78,46 @@ export class NotificationService {
             createdAt: serverTimestamp() as Timestamp,
           };
           
-          transaction.set(notificationRef, notification);
+          await setDoc(notificationRef, notification);
 
-          // Update unread count
-          const unreadCountRef = doc(db, COLLECTIONS.WORKSPACE_UNREAD_COUNTS, `${workspaceId}_${userId}`);
-          const unreadCount: WorkspaceUnreadCount = {
-            workspaceId,
-            userId,
-            unreadCount: 1, // Will be incremented by transaction
-            lastMessageAt: serverTimestamp() as Timestamp,
-            updatedAt: serverTimestamp() as Timestamp,
-          };
-
-          // Use transaction.set with merge: true to increment or create
-          transaction.set(unreadCountRef, unreadCount, { merge: true });
+          // Update unread count separately
+          await this.incrementUnreadCount(workspaceId, userId);
+          console.log(`Successfully created notification for user ${userId}`);
+        } catch (error) {
+          console.error(`Error creating notification for user ${userId}:`, error);
+          // Continue with other users even if one fails
         }
-      });
+      }
 
+      console.log(`Completed notification creation for ${recipients.length} recipients`);
       return { success: true };
     } catch (error: any) {
       console.error('Error creating notification:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Helper method to increment unread count
+  private static async incrementUnreadCount(workspaceId: string, userId: string): Promise<void> {
+    try {
+      const unreadCountRef = doc(db, COLLECTIONS.WORKSPACE_UNREAD_COUNTS, `${workspaceId}_${userId}`);
+      
+      await runTransaction(db, async (transaction) => {
+        const currentDoc = await transaction.get(unreadCountRef);
+        const currentCount = currentDoc.exists() ? (currentDoc.data().unreadCount || 0) : 0;
+        
+        const unreadCount: WorkspaceUnreadCount = {
+          workspaceId,
+          userId,
+          unreadCount: currentCount + 1,
+          lastMessageAt: serverTimestamp() as Timestamp,
+          updatedAt: serverTimestamp() as Timestamp,
+        };
+        
+        transaction.set(unreadCountRef, unreadCount);
+      });
+    } catch (error) {
+      console.error('Error incrementing unread count:', error);
     }
   }
 
@@ -163,6 +197,47 @@ export class NotificationService {
     }
   }
 
+  // Delete all notifications for a user (clear from UI)
+  static async deleteAllUserNotifications(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.CHAT_NOTIFICATIONS),
+        where('userId', '==', userId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.docs.length === 0) {
+        return { success: true };
+      }
+      
+      await runTransaction(db, async (transaction) => {
+        querySnapshot.docs.forEach(doc => {
+          transaction.delete(doc.ref);
+        });
+      });
+
+      // Also reset all unread counts for this user
+      const unreadCountsQuery = query(
+        collection(db, COLLECTIONS.WORKSPACE_UNREAD_COUNTS),
+        where('userId', '==', userId)
+      );
+      const unreadCountsSnapshot = await getDocs(unreadCountsQuery);
+      
+      if (unreadCountsSnapshot.docs.length > 0) {
+        await runTransaction(db, async (transaction) => {
+          unreadCountsSnapshot.docs.forEach(doc => {
+            transaction.update(doc.ref, { unreadCount: 0 });
+          });
+        });
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error deleting all notifications:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get unread counts for workspaces
   static async getWorkspaceUnreadCounts(userId: string): Promise<Record<string, number>> {
     try {
@@ -213,11 +288,16 @@ export class NotificationService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const unreadCountRef = doc(db, COLLECTIONS.WORKSPACE_UNREAD_COUNTS, `${workspaceId}_${userId}`);
-      await updateDoc(unreadCountRef, {
+      
+      // Use setDoc with merge to create document if it doesn't exist
+      await setDoc(unreadCountRef, {
+        workspaceId,
+        userId,
         unreadCount: 0,
         lastReadMessageId: lastReadMessageId || null,
+        lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
       // Also mark related notifications as read
       const notificationsQuery = query(
@@ -229,15 +309,63 @@ export class NotificationService {
       
       const notificationsSnapshot = await getDocs(notificationsQuery);
       
-      const batch = await runTransaction(db, async (transaction) => {
-        notificationsSnapshot.docs.forEach(doc => {
-          transaction.update(doc.ref, { isRead: true });
+      if (notificationsSnapshot.docs.length > 0) {
+        await runTransaction(db, async (transaction) => {
+          notificationsSnapshot.docs.forEach(docSnap => {
+            transaction.update(docSnap.ref, { isRead: true });
+          });
         });
-      });
+      }
 
       return { success: true };
     } catch (error: any) {
       console.error('Error marking workspace as read:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Clear all user notifications (delete from database)
+  static async clearAllUserNotifications(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('Clearing all notifications for user:', userId);
+      
+      const q = query(
+        collection(db, COLLECTIONS.CHAT_NOTIFICATIONS),
+        where('userId', '==', userId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      console.log('Found notifications to delete:', querySnapshot.docs.length);
+      
+      if (querySnapshot.docs.length === 0) {
+        return { success: true };
+      }
+      
+      await runTransaction(db, async (transaction) => {
+        querySnapshot.docs.forEach(doc => {
+          transaction.delete(doc.ref);
+        });
+      });
+
+      // Also reset all unread counts for this user
+      const unreadCountsQuery = query(
+        collection(db, COLLECTIONS.WORKSPACE_UNREAD_COUNTS),
+        where('userId', '==', userId)
+      );
+      const unreadCountsSnapshot = await getDocs(unreadCountsQuery);
+      
+      if (unreadCountsSnapshot.docs.length > 0) {
+        await runTransaction(db, async (transaction) => {
+          unreadCountsSnapshot.docs.forEach(doc => {
+            transaction.update(doc.ref, { unreadCount: 0 });
+          });
+        });
+      }
+
+      console.log('Successfully cleared all notifications');
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error clearing all notifications:', error);
       return { success: false, error: error.message };
     }
   }

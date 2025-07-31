@@ -13,6 +13,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   Dialog,
@@ -50,6 +51,7 @@ export function NavWorkspaces({
 }) {
   const { createWorkspace, deleteWorkspace, hasPermission } = useWorkspace()
   const { user } = useAuth()
+  const { state } = useSidebar()
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = React.useState("")
   const [newWorkspaceEmoji, setNewWorkspaceEmoji] = React.useState("#")
@@ -57,6 +59,20 @@ export function NavWorkspaces({
   const [isCreating, setIsCreating] = React.useState(false)
   const [error, setError] = React.useState("")
   const [unreadCounts, setUnreadCounts] = React.useState<Record<string, number>>({})
+
+  // Subscribe to unread counts for workspaces
+  React.useEffect(() => {
+    if (!user?.uid) return
+
+    const unsubscribe = NotificationService.subscribeToWorkspaceUnreadCounts(
+      user.uid,
+      (counts) => {
+        setUnreadCounts(counts)
+      }
+    )
+
+    return unsubscribe
+  }, [user?.uid])
 
 
   const handleAddWorkspace = async () => {
@@ -104,20 +120,26 @@ export function NavWorkspaces({
     }
   }
 
-  const handleWorkspaceClick = (workspace: Workspace) => {
+  const handleWorkspaceClick = async (workspace: Workspace) => {
     onWorkspaceSelect?.(workspace)
+    
+    // Mark workspace as read when user clicks on it
+    if (user?.uid) {
+      await NotificationService.markWorkspaceAsRead(workspace.id, user.uid)
+    }
   }
 
   return (
     <SidebarGroup>
       <div className="flex items-center justify-between">
         <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <Plus className="h-3 w-3" />
-            </Button>
-          </DialogTrigger>
+        {state === 'expanded' && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Plus className="h-3 w-3" />
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Workspace</DialogTitle>
@@ -186,7 +208,8 @@ export function NavWorkspaces({
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
       <SidebarGroupContent>
         <SidebarMenu>
@@ -212,12 +235,16 @@ export function NavWorkspaces({
                         e.preventDefault()
                         handleWorkspaceClick(workspace)
                       }}
+                      className="flex items-center gap-3 flex-1"
                     >
                       <Hash className="size-4" />
-                      <span>{workspace.name}</span>
+                      <span className="flex-1">{workspace.name}</span>
+                      {unreadCounts[workspace.id] > 0 && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                      )}
                     </a>
                   </SidebarMenuButton>
-                  {hasPermission('canDeleteWorkspace', workspace.id) && (
+                  {hasPermission('canDeleteWorkspace', workspace.id) && state === 'expanded' && (
                     <Button
                       variant="ghost"
                       size="sm"

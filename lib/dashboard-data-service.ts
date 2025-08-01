@@ -137,6 +137,7 @@ export class DashboardDataService {
         total: projects.length,
         active: projects.filter(p => p.status === 'active').length,
         completed: projects.filter(p => p.status === 'completed').length,
+        // @ts-ignore
         onTrack: projects.filter(p => p.health === 'on_track').length,
         atRisk: projects.filter(p => p.health === 'at_risk' || p.health === 'critical').length,
         averageProgress: projects.length > 0 

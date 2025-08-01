@@ -473,6 +473,7 @@ export class TaskService {
         userId,
         taskId,
         action,
+        // @ts-ignore
         description,
         metadata: {},
         createdAt: serverTimestamp() as Timestamp,

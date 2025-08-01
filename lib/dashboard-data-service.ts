@@ -418,4 +418,47 @@ export class DashboardDataService {
         return 'text-gray-500';
     }
   }
+
+  // Subscribe to real-time activity updates
+  static async subscribeToRealtimeActivity(
+    userId: string,
+    organizationId: string,
+    workspaceId: string | undefined,
+    callback: (activities: TeamActivity[]) => void
+  ): Promise<() => void> {
+    try {
+      // For now, implement a polling approach that updates every 30 seconds
+      // In a real implementation, you'd use Firebase real-time listeners or WebSockets
+      
+      let isActive = true;
+      
+      const updateActivity = async () => {
+        if (!isActive) return;
+        
+        try {
+          const teamActivity = await this.getTeamActivity(organizationId, workspaceId);
+          callback(teamActivity);
+        } catch (error) {
+          console.error('Error fetching real-time activity:', error);
+        }
+      };
+
+      // Initial load
+      await updateActivity();
+
+      // Set up polling interval
+      const interval = setInterval(updateActivity, 30000); // Update every 30 seconds
+
+      // Return unsubscribe function
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
+
+    } catch (error) {
+      console.error('Error setting up real-time activity subscription:', error);
+      // Return a no-op unsubscribe function
+      return () => {};
+    }
+  }
 }

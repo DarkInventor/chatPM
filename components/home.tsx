@@ -100,14 +100,11 @@ export function Home() {
         setIsActivityLoading(true)
         
         // Subscribe to real-time activity updates
-        // @ts-ignore
         unsubscribe = await DashboardDataService.subscribeToRealtimeActivity(
           user.uid,
           currentOrganization.id,
           currentWorkspace?.id,
-          // @ts-ignore
           (activities) => {
-            // @ts-ignore
             const formattedActivity = activities.slice(0, 15).map(activity => ({
               id: activity.id,
               user: activity.userName,

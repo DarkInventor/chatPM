@@ -1,10 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { AIChatInput } from "@/components/ui/ai-chat-input"
 import { useSidebar } from "@/components/ui/sidebar"
+import { useAuth } from "@/contexts/auth-context"
+import { useWorkspace } from "@/contexts/workspace-context"
+import { AIChatService } from "@/lib/ai-chat-service"
+import { AIContextOptimizer } from "@/lib/ai-context-optimizer"
+import { AIConversation, AIMessage } from "@/lib/types"
 
 interface Message {
   id: string
@@ -15,14 +20,162 @@ interface Message {
 
 export function Chat() {
   const { state: sidebarState } = useSidebar()
-  const [messages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! How can I help you today?",
-      role: "assistant",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000)
+  const { user } = useAuth()
+  const { currentOrganization, currentWorkspace } = useWorkspace()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentConversation, setCurrentConversation] = useState<AIConversation | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+
+  // Initialize conversation when user and organization are available
+  useEffect(() => {
+    const initializeConversation = async () => {
+      if (user && currentOrganization && !currentConversation) {
+        // First, try to find existing "Ask AI" conversation for this user/organization
+        // We'll look for conversations without a workspaceId (global conversations)
+        const existingConversations = await AIChatService.getUserConversations(
+          user.uid,
+          currentOrganization.id,
+          50 // Get more to filter through
+        );
+
+        // Find the "Ask AI" conversation (one without workspaceId)
+        const askAIConversation = existingConversations.find(conv => 
+          !conv.workspaceId && (conv.title === "Ask AI Chat" || conv.title === "New Chat")
+        );
+
+        let conversationToUse: string | null = null;
+
+        if (askAIConversation) {
+          // Use the existing Ask AI conversation
+          conversationToUse = askAIConversation.id;
+          console.log('Using existing Ask AI conversation:', conversationToUse);
+        } else {
+          // Create a new Ask AI conversation (without workspaceId for global access)
+          const result = await AIChatService.createConversation(
+            user.uid,
+            currentOrganization.id,
+            undefined, // No workspaceId - this makes it global
+            undefined, // projectId
+            "Ask AI Chat"
+          )
+          
+          if (result.success && result.conversationId) {
+            conversationToUse = result.conversationId;
+            console.log('Created new Ask AI conversation:', conversationToUse);
+          }
+        }
+
+        if (conversationToUse) {
+          setConversationId(conversationToUse);
+        }
+      }
     }
-  ])
+
+    initializeConversation()
+  }, [user, currentOrganization, currentWorkspace, currentConversation])
+
+  // Subscribe to conversation updates if we have a conversationId
+  useEffect(() => {
+    if (!conversationId) return
+
+    const unsubscribe = AIChatService.subscribeToConversation(
+      conversationId,
+      (conversation) => {
+        if (conversation) {
+          setCurrentConversation(conversation)
+          // Convert AI messages to our Message format
+          const convertedMessages: Message[] = conversation.messages.map((msg: AIMessage) => ({
+            id: msg.id,
+            content: msg.content,
+            role: msg.role as "user" | "assistant",
+            timestamp: msg.metadata.timestamp?.toDate() || new Date()
+          }))
+          
+          setMessages(convertedMessages)
+        }
+      }
+    )
+
+    return unsubscribe
+  }, [conversationId])
+
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || !user || !currentOrganization || !conversationId) return
+
+    setIsLoading(true)
+
+    try {
+      // Add user message to Firebase
+      console.log('Sending user message to Firebase:', { conversationId, content: content.trim() });
+      const userMessageResult = await AIChatService.addMessage(conversationId, 'user', content.trim());
+      console.log('User message result:', userMessageResult);
+      
+      if (!userMessageResult.success) {
+        throw new Error(`Failed to save user message: ${userMessageResult.error}`);
+      }
+
+      // Prepare context - "Ask AI" always uses comprehensive cross-workspace context
+      console.log('Preparing context for Ask AI - using cross-workspace context');
+      const systemPrompt = await AIContextOptimizer.getSmartCrossWorkspacePrompt(
+        user.uid,
+        currentOrganization.id,
+        content.trim()
+      );
+
+      // Call Claude API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: content.trim() }
+          ]
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(`Claude API error (${response.status}): ${errorData.error || 'Failed to get AI response'}`)
+      }
+
+      const data = await response.json()
+      
+      // Add assistant response to Firebase
+      console.log('Sending assistant response to Firebase:', { conversationId, responseLength: data.content?.length });
+      const assistantMessageResult = await AIChatService.addMessage(
+        conversationId, 
+        'assistant', 
+        data.content,
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          tokens: data.usage?.total_tokens
+        }
+      );
+      console.log('Assistant message result:', assistantMessageResult);
+      
+      if (!assistantMessageResult.success) {
+        console.error('Failed to save assistant message:', assistantMessageResult.error);
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error)
+      
+      // Add error message to Firebase
+      if (conversationId) {
+        await AIChatService.addMessage(
+          conversationId,
+          'assistant',
+          "Sorry, I encountered an error. Please try again."
+        )
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -79,7 +232,7 @@ export function Chat() {
           ? "left-[calc(14%+1.5rem)]" 
           : "left-1/2 transform -translate-x-1/2"
       } min-w-md px-4 lg:min-w-3xl md:min-w-3xl md:px-0 lg:px-0 mx-auto`}>
-        <AIChatInput />
+        <AIChatInput onSendMessage={sendMessage} disabled={isLoading} />
       </div>
     </div>
   )

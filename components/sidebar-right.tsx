@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Users, Bot, X, UserPlus, Crown, MessageCircle } from "lucide-react"
+import { Plus, Users, X, UserPlus, Crown, MessageCircle } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
 import { useAuth } from "@/contexts/auth-context"
@@ -29,18 +29,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Notifications } from "@/components/notifications"
-import { Message02, Sparkles, Trash } from "dicons"
+import { Message02, Trash } from "dicons"
 
 // Workspace Creation Dialog Component
 function WorkspaceCreationDialog() {
@@ -165,12 +159,6 @@ interface Member {
   status: "online" | "offline" | "away"
 }
 
-const AI_MODELS = [
-  { id: "gpt-4", name: "GPT-4", provider: "OpenAI" },
-  { id: "claude-3-opus", name: "Claude 3 Opus", provider: "Anthropic" },
-  { id: "claude-3-sonnet", name: "Claude 3 Sonnet", provider: "Anthropic" },
-  { id: "gemini-pro", name: "Gemini Pro", provider: "Google" },
-]
 
 // This is sample data.
 const data = {
@@ -217,7 +205,6 @@ export function SidebarRight({
     refreshData 
   } = useWorkspace()
   
-  const [selectedModel, setSelectedModel] = React.useState(AI_MODELS[1])
   const [isAddMemberOpen, setIsAddMemberOpen] = React.useState(false)
   const [newMemberEmail, setNewMemberEmail] = React.useState("")
   const [isInviting, setIsInviting] = React.useState(false)
@@ -499,63 +486,11 @@ export function SidebarRight({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* <SidebarSeparator className="mx-0" /> */}
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2">
-            {/* <Bot className="h-4 w-4" /> */}
-            AI Model
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton>
-                      <Sparkles className="h-4 w-4" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">{selectedModel.name}</p>
-                        <p className="text-xs text-muted-foreground">{selectedModel.provider}</p>
-                      </div>
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {AI_MODELS.map((model) => (
-                      <DropdownMenuItem
-                        key={model.id}
-                        onClick={() => setSelectedModel(model)}
-                        className="flex flex-col items-start gap-1"
-                      >
-                        <span className="font-medium">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* <SidebarSeparator className="mx-0" /> */}
 
         <Notifications />
       </SidebarContent>
-      {/* <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <Dialog>
-              <DialogTrigger asChild>
-                <SidebarMenuButton>
-                  <Plus />
-                  <span>New Workspace</span>
-                </SidebarMenuButton>
-              </DialogTrigger>
-              <WorkspaceCreationDialog />
-            </Dialog>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter> */}
     </Sidebar>
   )
 }

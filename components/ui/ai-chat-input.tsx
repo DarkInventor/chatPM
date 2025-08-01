@@ -15,7 +15,12 @@ const PLACEHOLDERS = [
   "Use @ to tag a workplace",
 ];
  
-const AIChatInput = () => {
+interface AIChatInputProps {
+  onSendMessage?: (message: string) => void
+  disabled?: boolean
+}
+
+const AIChatInput = ({ onSendMessage, disabled = false }: AIChatInputProps) => {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const [isActive, setIsActive] = useState(false);
@@ -54,7 +59,24 @@ const AIChatInput = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [inputValue]);
  
-  const handleActivate = () => setIsActive(true);
+  const handleActivate = () => {
+    if (!disabled) setIsActive(true)
+  }
+
+  const handleSend = () => {
+    if (inputValue.trim() && onSendMessage && !disabled) {
+      onSendMessage(inputValue.trim())
+      setInputValue("")
+      setIsActive(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
  
   const containerVariants = {
     collapsed: {
@@ -133,9 +155,11 @@ const AIChatInput = () => {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="flex-1 border-0 outline-0 rounded-md py-2 text-base bg-transparent w-full font-normal"
                 style={{ position: "relative", zIndex: 1 }}
                 onFocus={handleActivate}
+                disabled={disabled}
               />
               <div className="absolute left-0 top-0 w-full h-full pointer-events-none flex items-center px-3 py-2">
                 <AnimatePresence mode="wait">
@@ -181,10 +205,16 @@ const AIChatInput = () => {
               <Mic size={20} />
             </button> */}
             <button
-              className="flex items-center gap-1 bg-black hover:bg-zinc-700 text-white p-3 rounded-full font-medium justify-center"
+              className={`flex items-center gap-1 p-3 rounded-full font-medium justify-center transition-colors ${
+                disabled 
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                  : "bg-black hover:bg-zinc-700 text-white"
+              }`}
               title="Send"
               type="button"
               tabIndex={-1}
+              onClick={handleSend}
+              disabled={disabled}
             >
               <ArrowRight size={18} />
             </button>

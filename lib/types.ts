@@ -299,7 +299,7 @@ export interface AIMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  metadata?: {
+  metadata: {
     tokens?: number;
     model?: string;
     timestamp: Timestamp;
